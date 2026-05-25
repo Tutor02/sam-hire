@@ -310,6 +310,13 @@ function AppPage() {
           )}
         </div>
       </main>
+      {profileCandidate && (
+        <CandidateProfileDialog
+          candidate={profileCandidate}
+          job={(jobsQ.data ?? []).find((j) => j.id === profileCandidate.job_id)}
+          onClose={() => setProfileCandidate(null)}
+        />
+      )}
     </div>
   );
 }
