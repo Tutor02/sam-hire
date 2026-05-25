@@ -403,26 +403,56 @@ function AddCandidateDialog({ jobs, defaultJobId }: { jobs: Job[]; defaultJobId?
   const [open, setOpen] = useState(false);
   const [jobId, setJobId] = useState<string | undefined>(defaultJobId);
   const [status, setStatus] = useState<string>("applied");
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const runAnalyze = useServerFn(analyzeCv);
 
-  useEffect(() => { setJobId(defaultJobId); }, [defaultJobId, open]);
+  useEffect(() => { setJobId(defaultJobId); setCvFile(null); }, [defaultJobId, open]);
 
   const create = useMutation({
     mutationFn: async (vals: { full_name: string; email: string; linkedin: string }) => {
       if (!jobId) throw new Error("Pick a job");
-      const { error } = await supabase.from("candidates").insert({
+      let cv_url: string | null = null;
+      let storagePath: string | null = null;
+      if (cvFile) {
+        if (cvFile.type !== "application/pdf") throw new Error("CV must be a PDF");
+        if (cvFile.size > 10 * 1024 * 1024) throw new Error("CV must be under 10 MB");
+        storagePath = `${user!.id}/${crypto.randomUUID()}-${cvFile.name.replace(/[^\w.\-]/g, "_")}`;
+        const up = await supabase.storage.from("cvs").upload(storagePath, cvFile, {
+          contentType: "application/pdf",
+        });
+        if (up.error) throw up.error;
+        cv_url = storagePath;
+      }
+      const { data: inserted, error } = await supabase.from("candidates").insert({
         full_name: vals.full_name,
         email: vals.email || null,
         linkedin: vals.linkedin || null,
         status,
         job_id: jobId,
         user_id: user!.id,
-      });
+        cv_url,
+      }).select("id").single();
       if (error) throw error;
+      return { candidateId: inserted!.id as string, storagePath };
     },
-    onSuccess: () => {
+    onSuccess: async (res) => {
       qc.invalidateQueries({ queryKey: ["candidates"] });
       setOpen(false);
       toast.success("Candidate added");
+      if (res?.storagePath) {
+        setAnalyzing(true);
+        toast.message("Analyzing CV with AI…");
+        try {
+          await runAnalyze({ data: { candidateId: res.candidateId, storagePath: res.storagePath } });
+          qc.invalidateQueries({ queryKey: ["candidates"] });
+          toast.success("AI analysis complete");
+        } catch (e) {
+          toast.error((e as Error).message);
+        } finally {
+          setAnalyzing(false);
+        }
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -480,9 +510,22 @@ function AddCandidateDialog({ jobs, defaultJobId }: { jobs: Job[]; defaultJobId?
             <Label htmlFor="c-linkedin">LinkedIn URL</Label>
             <Input id="c-linkedin" name="linkedin" type="url" placeholder="https://linkedin.com/in/…" />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="c-cv">CV (PDF)</Label>
+            <Input
+              id="c-cv"
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => setCvFile(e.target.files?.[0] ?? null)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional. We'll extract the text and run AI scoring automatically.
+            </p>
+          </div>
           <DialogFooter>
-            <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? "Adding…" : "Add candidate"}
+            <Button type="submit" disabled={create.isPending || analyzing}>
+              {(create.isPending || analyzing) && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+              {create.isPending ? "Adding…" : analyzing ? "Analyzing CV…" : "Add candidate"}
             </Button>
           </DialogFooter>
         </form>
