@@ -359,6 +359,78 @@ function EmptyStateInner() {
   );
 }
 
+async function openCvInNewTab(cvUrl: string) {
+  const { data, error } = await supabase.storage.from("cvs").createSignedUrl(cvUrl, 300);
+  if (error) { toast.error("Could not open CV"); return; }
+  window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+}
+
+function CandidateProfileDialog({ candidate, job, onClose }: { candidate: Candidate; job?: Job; onClose: () => void }) {
+  return (
+    <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {candidate.full_name}
+            {candidate.ai_score != null && <AiScoreBadge score={candidate.ai_score} summary={candidate.ai_summary} />}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {job && <p className="text-sm text-muted-foreground">{job.title}</p>}
+
+          <div className="space-y-2 text-sm">
+            {candidate.email && (
+              <a href={`mailto:${candidate.email}`} className="flex items-center gap-2 hover:text-foreground">
+                <Mail className="h-4 w-4 shrink-0" />{candidate.email}
+              </a>
+            )}
+            {candidate.linkedin && (
+              <a href={candidate.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-foreground">
+                <Linkedin className="h-4 w-4 shrink-0" />LinkedIn
+              </a>
+            )}
+          </div>
+
+          {candidate.ai_score != null && (
+            <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+              <div className="text-sm font-medium">AI Analysis</div>
+              {candidate.ai_summary && (
+                <p className="text-sm text-muted-foreground">{candidate.ai_summary}</p>
+              )}
+              {candidate.ai_strengths && (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Strengths</div>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
+                    {candidate.ai_strengths.split('\n').filter(Boolean).map((s, i) => (
+                      <li key={i}>{s.replace(/^[-*]\s*/, '')}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {candidate.ai_risks && (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Risks</div>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
+                    {candidate.ai_risks.split('\n').filter(Boolean).map((s, i) => (
+                      <li key={i}>{s.replace(/^[-*]\s*/, '')}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {candidate.cv_url && (
+            <Button onClick={() => openCvInNewTab(candidate.cv_url)} variant="outline" className="w-full">
+              <FileText className="mr-2 h-4 w-4" />View CV
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AddJobDialog({ primary }: { primary?: boolean }) {
   const { user } = useAuth();
   const qc = useQueryClient();
