@@ -239,13 +239,16 @@ function AppPage() {
                                 <div className="truncate font-medium text-sm">{c.full_name}</div>
                                 {job && <div className="truncate text-xs text-muted-foreground">{job.title}</div>}
                               </div>
-                              <button
-                                onClick={() => deleteCandidate.mutate(c.id)}
-                                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
-                                aria-label="Delete"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <AiScoreBadge score={c.ai_score} summary={c.ai_summary} />
+                                <button
+                                  onClick={() => deleteCandidate.mutate(c.id)}
+                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
+                                  aria-label="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
                             </div>
                             <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
                               {c.email && (
@@ -257,6 +260,11 @@ function AppPage() {
                                 <a href={c.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-foreground truncate">
                                   <Linkedin className="h-3 w-3 shrink-0" /><span className="truncate">LinkedIn</span>
                                 </a>
+                              )}
+                              {c.cv_url && (
+                                <span className="flex items-center gap-1.5 text-muted-foreground truncate">
+                                  <FileText className="h-3 w-3 shrink-0" /><span className="truncate">CV attached</span>
+                                </span>
                               )}
                             </div>
                             <Select
