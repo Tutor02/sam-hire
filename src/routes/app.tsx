@@ -271,9 +271,16 @@ function AppPage() {
                                 </a>
                               )}
                               {c.cv_url && (
-                                <span className="flex items-center gap-1.5 text-muted-foreground truncate">
-                                  <FileText className="h-3 w-3 shrink-0" /><span className="truncate">CV attached</span>
-                                </span>
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await openCvInNewTab(c.cv_url!);
+                                  }}
+                                  className="flex items-center gap-1.5 hover:text-foreground truncate text-xs text-muted-foreground transition"
+                                  draggable={false}
+                                >
+                                  <FileText className="h-3 w-3 shrink-0" /><span className="truncate">View CV</span>
+                                </button>
                               )}
                             </div>
                             <Select
