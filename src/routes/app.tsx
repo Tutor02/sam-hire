@@ -53,6 +53,7 @@ function AppPage() {
 
   const [selectedJobId, setSelectedJobId] = useState<string | "all">("all");
   const [search, setSearch] = useState("");
+  const [profileCandidate, setProfileCandidate] = useState<Candidate | null>(null);
 
   const jobsQ = useQuery({
     queryKey: ["jobs"],
