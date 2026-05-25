@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { analyzeCv } from "@/lib/cv.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +17,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Briefcase, LogOut, Plus, Search, UserPlus, Mail, Linkedin, Trash2, ShieldCheck } from "lucide-react";
+import { Briefcase, LogOut, Plus, Search, UserPlus, Mail, Linkedin, Trash2, ShieldCheck, Sparkles, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app")({ component: AppPage });
@@ -24,6 +26,11 @@ type Job = { id: string; title: string; description: string | null; user_id: str
 type Candidate = {
   id: string; full_name: string; email: string | null; linkedin: string | null;
   status: string | null; job_id: string | null; user_id: string | null; created_at: string | null;
+  cv_url: string | null;
+  ai_score: number | null;
+  ai_summary: string | null;
+  ai_strengths: string | null;
+  ai_risks: string | null;
 };
 
 const STAGES = [
