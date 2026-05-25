@@ -17,7 +17,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Briefcase, LogOut, Plus, Search, UserPlus, Mail, Linkedin, Trash2, ShieldCheck, Sparkles, FileText, Loader2 } from "lucide-react";
+import { Briefcase, LogOut, Plus, Search, UserPlus, Mail, Linkedin, Trash2, ShieldCheck, Sparkles, FileText, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app")({ component: AppPage });
