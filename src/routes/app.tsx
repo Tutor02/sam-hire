@@ -421,7 +421,7 @@ function CandidateProfileDialog({ candidate, job, onClose }: { candidate: Candid
           )}
 
           {candidate.cv_url && (
-            <Button onClick={() => openCvInNewTab(candidate.cv_url)} variant="outline" className="w-full">
+            <Button onClick={() => openCvInNewTab(candidate.cv_url!)} variant="outline" className="w-full">
               <FileText className="mr-2 h-4 w-4" />View CV
             </Button>
           )}
