@@ -243,6 +243,14 @@ function AppPage() {
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <AiScoreBadge score={c.ai_score} summary={c.ai_summary} />
                                 <button
+                                  onClick={(e) => { e.stopPropagation(); setProfileCandidate(c); }}
+                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition"
+                                  aria-label="View profile"
+                                  draggable={false}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                                <button
                                   onClick={() => deleteCandidate.mutate(c.id)}
                                   className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
                                   aria-label="Delete"
