@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { analyzeCv } from "@/lib/cv.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +17,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Briefcase, LogOut, Plus, Search, UserPlus, Mail, Linkedin, Trash2, ShieldCheck } from "lucide-react";
+import { Briefcase, LogOut, Plus, Search, UserPlus, Mail, Linkedin, Trash2, ShieldCheck, Sparkles, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app")({ component: AppPage });
@@ -24,6 +26,11 @@ type Job = { id: string; title: string; description: string | null; user_id: str
 type Candidate = {
   id: string; full_name: string; email: string | null; linkedin: string | null;
   status: string | null; job_id: string | null; user_id: string | null; created_at: string | null;
+  cv_url: string | null;
+  ai_score: number | null;
+  ai_summary: string | null;
+  ai_strengths: string | null;
+  ai_risks: string | null;
 };
 
 const STAGES = [
@@ -232,13 +239,16 @@ function AppPage() {
                                 <div className="truncate font-medium text-sm">{c.full_name}</div>
                                 {job && <div className="truncate text-xs text-muted-foreground">{job.title}</div>}
                               </div>
-                              <button
-                                onClick={() => deleteCandidate.mutate(c.id)}
-                                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
-                                aria-label="Delete"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <AiScoreBadge score={c.ai_score} summary={c.ai_summary} />
+                                <button
+                                  onClick={() => deleteCandidate.mutate(c.id)}
+                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
+                                  aria-label="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
                             </div>
                             <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
                               {c.email && (
@@ -250,6 +260,11 @@ function AppPage() {
                                 <a href={c.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-foreground truncate">
                                   <Linkedin className="h-3 w-3 shrink-0" /><span className="truncate">LinkedIn</span>
                                 </a>
+                              )}
+                              {c.cv_url && (
+                                <span className="flex items-center gap-1.5 text-muted-foreground truncate">
+                                  <FileText className="h-3 w-3 shrink-0" /><span className="truncate">CV attached</span>
+                                </span>
                               )}
                             </div>
                             <Select
@@ -284,6 +299,29 @@ function AppPage() {
 }
 
 function EmptyState() {
+  return EmptyStateInner();
+}
+
+function AiScoreBadge({ score, summary }: { score: number | null; summary: string | null }) {
+  if (score == null) return null;
+  const tone =
+    score >= 80
+      ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+      : score >= 50
+      ? "bg-amber-100 text-amber-700 border-amber-200"
+      : "bg-rose-100 text-rose-700 border-rose-200";
+  return (
+    <span
+      title={summary ?? `AI score: ${score}`}
+      className={`inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${tone}`}
+    >
+      <Sparkles className="h-2.5 w-2.5" />
+      {score}
+    </span>
+  );
+}
+
+function EmptyStateInner() {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -365,26 +403,56 @@ function AddCandidateDialog({ jobs, defaultJobId }: { jobs: Job[]; defaultJobId?
   const [open, setOpen] = useState(false);
   const [jobId, setJobId] = useState<string | undefined>(defaultJobId);
   const [status, setStatus] = useState<string>("applied");
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const runAnalyze = useServerFn(analyzeCv);
 
-  useEffect(() => { setJobId(defaultJobId); }, [defaultJobId, open]);
+  useEffect(() => { setJobId(defaultJobId); setCvFile(null); }, [defaultJobId, open]);
 
   const create = useMutation({
     mutationFn: async (vals: { full_name: string; email: string; linkedin: string }) => {
       if (!jobId) throw new Error("Pick a job");
-      const { error } = await supabase.from("candidates").insert({
+      let cv_url: string | null = null;
+      let storagePath: string | null = null;
+      if (cvFile) {
+        if (cvFile.type !== "application/pdf") throw new Error("CV must be a PDF");
+        if (cvFile.size > 10 * 1024 * 1024) throw new Error("CV must be under 10 MB");
+        storagePath = `${user!.id}/${crypto.randomUUID()}-${cvFile.name.replace(/[^\w.\-]/g, "_")}`;
+        const up = await supabase.storage.from("cvs").upload(storagePath, cvFile, {
+          contentType: "application/pdf",
+        });
+        if (up.error) throw up.error;
+        cv_url = storagePath;
+      }
+      const { data: inserted, error } = await supabase.from("candidates").insert({
         full_name: vals.full_name,
         email: vals.email || null,
         linkedin: vals.linkedin || null,
         status,
         job_id: jobId,
         user_id: user!.id,
-      });
+        cv_url,
+      }).select("id").single();
       if (error) throw error;
+      return { candidateId: inserted!.id as string, storagePath };
     },
-    onSuccess: () => {
+    onSuccess: async (res) => {
       qc.invalidateQueries({ queryKey: ["candidates"] });
       setOpen(false);
       toast.success("Candidate added");
+      if (res?.storagePath) {
+        setAnalyzing(true);
+        toast.message("Analyzing CV with AI…");
+        try {
+          await runAnalyze({ data: { candidateId: res.candidateId, storagePath: res.storagePath } });
+          qc.invalidateQueries({ queryKey: ["candidates"] });
+          toast.success("AI analysis complete");
+        } catch (e) {
+          toast.error((e as Error).message);
+        } finally {
+          setAnalyzing(false);
+        }
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -442,9 +510,22 @@ function AddCandidateDialog({ jobs, defaultJobId }: { jobs: Job[]; defaultJobId?
             <Label htmlFor="c-linkedin">LinkedIn URL</Label>
             <Input id="c-linkedin" name="linkedin" type="url" placeholder="https://linkedin.com/in/…" />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="c-cv">CV (PDF)</Label>
+            <Input
+              id="c-cv"
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => setCvFile(e.target.files?.[0] ?? null)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional. We'll extract the text and run AI scoring automatically.
+            </p>
+          </div>
           <DialogFooter>
-            <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? "Adding…" : "Add candidate"}
+            <Button type="submit" disabled={create.isPending || analyzing}>
+              {(create.isPending || analyzing) && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+              {create.isPending ? "Adding…" : analyzing ? "Analyzing CV…" : "Add candidate"}
             </Button>
           </DialogFooter>
         </form>
