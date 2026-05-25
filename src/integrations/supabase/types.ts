@@ -16,33 +16,54 @@ export type Database = {
     Tables: {
       candidates: {
         Row: {
+          ai_risks: string | null
+          ai_score: number | null
+          ai_strengths: string | null
+          ai_summary: string | null
           created_at: string | null
+          cv_url: string | null
           email: string | null
           full_name: string
           id: string
           job_id: string | null
           linkedin: string | null
+          notes: string | null
           status: string | null
+          tags: string | null
           user_id: string | null
         }
         Insert: {
+          ai_risks?: string | null
+          ai_score?: number | null
+          ai_strengths?: string | null
+          ai_summary?: string | null
           created_at?: string | null
+          cv_url?: string | null
           email?: string | null
           full_name: string
           id?: string
           job_id?: string | null
           linkedin?: string | null
+          notes?: string | null
           status?: string | null
+          tags?: string | null
           user_id?: string | null
         }
         Update: {
+          ai_risks?: string | null
+          ai_score?: number | null
+          ai_strengths?: string | null
+          ai_summary?: string | null
           created_at?: string | null
+          cv_url?: string | null
           email?: string | null
           full_name?: string
           id?: string
           job_id?: string | null
           linkedin?: string | null
+          notes?: string | null
           status?: string | null
+          tags?: string | null
           user_id?: string | null
         }
         Relationships: [
