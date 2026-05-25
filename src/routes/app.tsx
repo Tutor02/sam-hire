@@ -299,6 +299,29 @@ function AppPage() {
 }
 
 function EmptyState() {
+  return EmptyStateInner();
+}
+
+function AiScoreBadge({ score, summary }: { score: number | null; summary: string | null }) {
+  if (score == null) return null;
+  const tone =
+    score >= 80
+      ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+      : score >= 50
+      ? "bg-amber-100 text-amber-700 border-amber-200"
+      : "bg-rose-100 text-rose-700 border-rose-200";
+  return (
+    <span
+      title={summary ?? `AI score: ${score}`}
+      className={`inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${tone}`}
+    >
+      <Sparkles className="h-2.5 w-2.5" />
+      {score}
+    </span>
+  );
+}
+
+function EmptyStateInner() {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
