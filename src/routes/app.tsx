@@ -17,7 +17,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Briefcase, LogOut, Plus, Search, UserPlus, Mail, Linkedin, Trash2, ShieldCheck, Sparkles, FileText, Loader2 } from "lucide-react";
+import { Briefcase, LogOut, Plus, Search, UserPlus, Mail, Linkedin, Trash2, ShieldCheck, Sparkles, FileText, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app")({ component: AppPage });
@@ -53,6 +53,7 @@ function AppPage() {
 
   const [selectedJobId, setSelectedJobId] = useState<string | "all">("all");
   const [search, setSearch] = useState("");
+  const [profileCandidate, setProfileCandidate] = useState<Candidate | null>(null);
 
   const jobsQ = useQuery({
     queryKey: ["jobs"],
@@ -242,6 +243,14 @@ function AppPage() {
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <AiScoreBadge score={c.ai_score} summary={c.ai_summary} />
                                 <button
+                                  onClick={(e) => { e.stopPropagation(); setProfileCandidate(c); }}
+                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition"
+                                  aria-label="View profile"
+                                  draggable={false}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                                <button
                                   onClick={() => deleteCandidate.mutate(c.id)}
                                   className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
                                   aria-label="Delete"
@@ -262,9 +271,16 @@ function AppPage() {
                                 </a>
                               )}
                               {c.cv_url && (
-                                <span className="flex items-center gap-1.5 text-muted-foreground truncate">
-                                  <FileText className="h-3 w-3 shrink-0" /><span className="truncate">CV attached</span>
-                                </span>
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await openCvInNewTab(c.cv_url!);
+                                  }}
+                                  className="flex items-center gap-1.5 hover:text-foreground truncate text-xs text-muted-foreground transition"
+                                  draggable={false}
+                                >
+                                  <FileText className="h-3 w-3 shrink-0" /><span className="truncate">View CV</span>
+                                </button>
                               )}
                             </div>
                             <Select
@@ -294,6 +310,13 @@ function AppPage() {
           )}
         </div>
       </main>
+      {profileCandidate && (
+        <CandidateProfileDialog
+          candidate={profileCandidate}
+          job={(jobsQ.data ?? []).find((j) => j.id === profileCandidate.job_id)}
+          onClose={() => setProfileCandidate(null)}
+        />
+      )}
     </div>
   );
 }
@@ -333,6 +356,78 @@ function EmptyStateInner() {
       </p>
       <div className="mt-4"><AddJobDialog primary /></div>
     </div>
+  );
+}
+
+async function openCvInNewTab(cvUrl: string) {
+  const { data, error } = await supabase.storage.from("cvs").createSignedUrl(cvUrl, 300);
+  if (error) { toast.error("Could not open CV"); return; }
+  window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+}
+
+function CandidateProfileDialog({ candidate, job, onClose }: { candidate: Candidate; job?: Job; onClose: () => void }) {
+  return (
+    <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {candidate.full_name}
+            {candidate.ai_score != null && <AiScoreBadge score={candidate.ai_score} summary={candidate.ai_summary} />}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {job && <p className="text-sm text-muted-foreground">{job.title}</p>}
+
+          <div className="space-y-2 text-sm">
+            {candidate.email && (
+              <a href={`mailto:${candidate.email}`} className="flex items-center gap-2 hover:text-foreground">
+                <Mail className="h-4 w-4 shrink-0" />{candidate.email}
+              </a>
+            )}
+            {candidate.linkedin && (
+              <a href={candidate.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-foreground">
+                <Linkedin className="h-4 w-4 shrink-0" />LinkedIn
+              </a>
+            )}
+          </div>
+
+          {candidate.ai_score != null && (
+            <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+              <div className="text-sm font-medium">AI Analysis</div>
+              {candidate.ai_summary && (
+                <p className="text-sm text-muted-foreground">{candidate.ai_summary}</p>
+              )}
+              {candidate.ai_strengths && (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Strengths</div>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
+                    {candidate.ai_strengths.split('\n').filter(Boolean).map((s, i) => (
+                      <li key={i}>{s.replace(/^[-*]\s*/, '')}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {candidate.ai_risks && (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Risks</div>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
+                    {candidate.ai_risks.split('\n').filter(Boolean).map((s, i) => (
+                      <li key={i}>{s.replace(/^[-*]\s*/, '')}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {candidate.cv_url && (
+            <Button onClick={() => openCvInNewTab(candidate.cv_url!)} variant="outline" className="w-full">
+              <FileText className="mr-2 h-4 w-4" />View CV
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
