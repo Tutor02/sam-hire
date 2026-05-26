@@ -30,7 +30,7 @@ export type Database = {
           notes: string | null
           status: string | null
           tags: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           ai_risks?: string | null
@@ -47,7 +47,7 @@ export type Database = {
           notes?: string | null
           status?: string | null
           tags?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Update: {
           ai_risks?: string | null
@@ -64,7 +64,7 @@ export type Database = {
           notes?: string | null
           status?: string | null
           tags?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -89,21 +89,21 @@ export type Database = {
           description: string | null
           id: string
           title: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string | null
           description?: string | null
           id?: string
           title: string
-          user_id?: string | null
+          user_id?: string
         }
         Update: {
           created_at?: string | null
           description?: string | null
           id?: string
           title?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
