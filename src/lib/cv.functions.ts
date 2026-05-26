@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const Input = z.object({
   candidateId: z.string().uuid(),
@@ -34,7 +33,7 @@ export const analyzeCv = createServerFn({ method: "POST" })
     if (!data.storagePath.startsWith(`${userId}/`)) {
       throw new Error("Invalid CV path");
     }
-    const { data: file, error: dlErr } = await supabaseAdmin.storage
+    const { data: file, error: dlErr } = await supabase.storage
       .from("cvs")
       .download(data.storagePath);
     if (dlErr || !file) throw new Error(dlErr?.message ?? "Failed to download CV");
