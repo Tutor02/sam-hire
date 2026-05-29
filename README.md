@@ -143,4 +143,4 @@ This helps recruiters quickly shortlist candidates.
 
 ### 1. Clone repo
 ```bash
-git clone https://github.com/tutor02/mini-ats.git
+git clone https://github.com/Tutor02/mini-ats.git
